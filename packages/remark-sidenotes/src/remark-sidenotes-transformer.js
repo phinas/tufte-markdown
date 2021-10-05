@@ -61,6 +61,7 @@ export function transformer(tree) {
   // "Regular" Sidenotes/Marginnotes consisting of a reference and a definition
   // Syntax for Sidenotes [^<number>] and somewhere else [^<number]: <markdown>
   // Syntax for Marginnotes [^<descriptor>] and somewhere else [^<descriptor]: {-}
+  var queue = []
   visit(tree, 'footnoteReference', (node, index, parent) => {
     const target = select(
       tree,
@@ -76,12 +77,22 @@ export function transformer(tree) {
 
     const nodeDetail = extractNoteFromHtml(coerceToHtml(notesAst))
 
-    parent.children.splice(index, 1, ...getReplacement(nodeDetail))
+    queue.push([parent, index, nodeDetail])
   })
 
+  while(queue.length > 0) {
+    var [parent, index, nodeDetail] = queue.pop()
+    parent.children.splice(index, 1, ...getReplacement(nodeDetail))
+  }
+
   visit(tree, 'footnoteDefinition', (node, index, parent) => {
-    parent.children.splice(index, 1)
+    queue.push([parent, index])
   })
+
+  while(queue.length > 0 ) {
+    var [parent, index] = queue.pop()
+    parent.children.splice(index, 1)
+  }
 
   // "Inline" Sidenotes which do not have two parts
   // Syntax: [^{-} <markdown>]
